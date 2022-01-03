@@ -111,9 +111,6 @@ class Crawler(object):
         while not q.empty():
             this_url, depth = q.get()
 
-            if depth > self.depth_limit:
-                continue
-
             do_not_follow = \
                 [f for f in self.pre_visit_filters if not f(this_url)]
 
@@ -127,7 +124,8 @@ class Crawler(object):
                     links = LinkFetcher.fetch(str(this_url))
                     for link_url in [self._pre_visit_url_condense(URL(ol)) for ol in links]:
                         if link_url not in self.urls_seen:
-                            q.put((link_url, depth + 1))
+                            if depth < self.depth_limit:
+                                q.put((link_url, depth + 1))
                             self.urls_seen.add(link_url)
 
                         do_not_remember = [f for f in self.saved_url_filters if not f(link_url)]
