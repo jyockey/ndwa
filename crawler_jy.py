@@ -7,7 +7,6 @@ import urllib
 import urllib.error
 import urllib.request
 import optparse
-import hashlib
 from bs4 import BeautifulSoup
 from html import escape
 from queue import Queue
@@ -243,27 +242,33 @@ def parse_options():
 
 
 class DotWriter:
-    def __init__ (self):
+    def __init__(self):
         self.node_alias = {}
+        self.serial_id = 0
 
-    def _safe_alias(self, url, silent=False):
-        if url in self.node_alias:
-            return self.node_alias[url]
+    def _safe_alias(self, node, node_strs):
+        if node in self.node_alias:
+            return self.node_alias[node]
         else:
-            m = hashlib.md5()
-            m.update(url.encode('utf-8'))
-            name = "N" + m.hexdigest()
-            self.node_alias[url] = name
-            if not silent:
-                print("\t%s [label=\"%s\"];" % (name, url))
+            name = "N" + str(self.serial_id)
+            self.serial_id += 1
+            self.node_alias[node] = name
+            node_strs.append("\t%s [label=\"%s\"];" % (name, node))
             return name
 
     def asDot(self, links):
-        print("digraph Crawl {")
-        print("\t edge [K=0.2, len=0.1];")
-        for l in links:
-            print("\t" + self._safe_alias(l.src) + " -> " + self._safe_alias(l.dst) + ";")
-        print("}")
+        node_strs = []
+        edge_strs = []
+        for k in links:
+            edge_strs.append("\t" + self._safe_alias(k.src, node_strs) + " -> "
+                                  + self._safe_alias(k.dst, node_strs) + ";")
+
+        dot = "digraph Crawl {\n\tedge [K=0.2, len=0.1];\n"
+        dot += "\n".join(node_strs)
+        dot += "\n".join(edge_strs)
+        dot += "\n}"
+        return dot
+
 
 def main():
     opts, args = parse_options()
@@ -291,7 +296,7 @@ def main():
 
     if opts.out_dot:
         d = DotWriter()
-        d.asDot(crawler.links_remembered)
+        print(d.asDot(crawler.links_remembered))
 
     eTime = time.time()
     tTime = eTime - sTime
